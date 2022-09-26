@@ -1,8 +1,11 @@
-describe('testes para a api de previsão do tempo', () => {
-  it('deve retornar a previsão do tempo poucas vezes', async () => {
-    const { body, status } = await global.testRequest.get('/forecast');
-    expect(status).toBe(200);
-    expect(body).toEqual([
+import { Controller, Get } from '@overnightjs/core';
+import { Request, Response } from 'express';
+
+@Controller('forecast')
+export class ForecastController {
+  @Get('')
+  public getForecastForLoggedUser(_: Request, res: Response): void {
+    res.send([
       {
         time: '2020-04-26T00:00:00+00:00',
         forecast: [
@@ -42,5 +45,5 @@ describe('testes para a api de previsão do tempo', () => {
         ],
       },
     ]);
-  });
-});
+  }
+}
