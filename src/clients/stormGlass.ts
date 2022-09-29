@@ -1,4 +1,5 @@
-import { AxiosStatic } from "axios"
+import { InternalError } from "@src/util/errors/internal-error";
+import { AxiosError, AxiosStatic } from "axios"
 
 // Consumindo api do stormglass. Essas interfaces são para tipar os dados que vem no response.
 // O arquivo test/fixtures/stormglass_weather_3_hours.json tem o exemplo de responde do stormGlass
@@ -33,6 +34,22 @@ export interface ForecastPoint {
     windSpeed: number;
 }
 
+export class ClientRequestError extends InternalError{
+    constructor(message: string){
+        const internalMessage = 'Erro inesperado ao tentar acesso o StormGlass';
+        super(`${internalMessage}: ${message}`);
+        
+    }
+
+}
+
+export class StormGlassResponseError extends InternalError {
+    constructor(message: string) {
+      const internalMessage =
+        'Unexpected error returned by the StormGlass service';
+      super(`${internalMessage}: ${message}`);
+    }
+  }
 
 export class StormGlass{
     readonly stormGlassAPIParams =
@@ -44,10 +61,31 @@ export class StormGlass{
     }
 
     public async fetchPoints(lat:number, lon:number): Promise<ForecastPoint[]> {
+
+        try {
+
         const response =  await this.request.get<StormGlassForecastResponse>(
-            'https://api.stormglass.io/v2/weather/point?lat=${lat}&lng=${lng}&params=${this.stormGlassAPIParams}&source=${this.stormGlassAPISource}'
+            'https://api.stormglass.io/v2/weather/point?lat=${lat}&lng=${lng}&params=${this.stormGlassAPIParams}&source=${this.stormGlassAPISource}',
+            {
+                headers: {
+                    Autorizathion: 'fake-token',
+                },
+            }
             );
+
             return this.normalizeResponse(response.data)
+        }
+        catch (err: unknown) {
+            if ((err as AxiosError).response && (err as AxiosError).response?.data) {
+              throw new StormGlassResponseError(
+                `Error: ${JSON.stringify((err as AxiosError).response?.data)} Code: ${
+                  (err as AxiosError).response?.status
+                }`
+              );
+            }
+      
+            throw new ClientRequestError((err as Error).message);
+          }
     }
 
     private normalizeResponse(points: StormGlassForecastResponse): ForecastPoint[] {
